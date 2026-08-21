@@ -1,0 +1,74 @@
+---
+- name: Desplegar Backend Node.js en Servidor Ubuntu
+  hosts: webserver
+  become: yes
+  vars:
+    # Define aquí las variables de entorno de tu app
+    db_host: "192.168.1.141"
+    db_port: "5432"
+    db_name: "loginusers"
+    db_user: "bklogin"
+    db_password: "bk27login"
+    port: "3000"
+
+  tasks:
+    - name: Instalar Git, Curl y Node.js con npm
+      apt:
+        name:
+          - git
+          - curl
+          - nodejs
+          - npm
+        state: present
+        update_cache: yes
+
+    - name: Crear directorio para la aplicación
+      file:
+        path: /var/www/backend
+        state: directory
+        owner: deployer
+        group: deployer
+        mode: "0755"
+
+    - name: Clonar o actualizar el repositorio del backend
+      git:
+        repo: "https://github.com/YampierPonceV/bklogin.git"
+        dest: /var/www/backend
+        version: main
+        force: yes
+      become: no
+
+    - name: Crear archivo .env de variables de entorno
+      copy:
+        dest: /var/www/backend/.env
+        content: |
+          PORT={{ port }}
+          DB_HOST={{ db_host }}
+          DB_PORT={{ db_port }}
+          DB_NAME={{ db_name }}
+          DB_USER={{ db_user }}
+          DB_PASSWORD={{ db_password }}
+        owner: deployer
+        group: deployer
+        mode: "0600"
+
+    - name: Instalar dependencias de Node.js (npm install)
+      npm:
+        path: /var/www/backend
+      become: no
+
+    - name: Copiar archivo de servicio systemd
+      template:
+        src: templates/backend.service.j2
+        dest: /etc/systemd/system/backend.service
+        mode: "0644"
+
+    - name: Recargar el demonio de systemd
+      systemd:
+        daemon_reload: yes
+
+    - name: Iniciar y habilitar el servicio backend
+      systemd:
+        name: backend
+        state: restarted
+        enabled: yes
