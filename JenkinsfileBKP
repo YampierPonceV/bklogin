@@ -2,6 +2,7 @@ pipeline {
     agent any
 
     environment {
+        // ID del bot de Telegram y Chat ID
         TELEGRAM_BOT_TOKEN = credentials('telegram-bot-token')
         TELEGRAM_CHAT_ID   = credentials('telegram-chat-id')
     }
@@ -9,20 +10,16 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
+                // Jenkins descarga el código del repositorio automáticamente
                 checkout scm
             }
         }
 
-        stage('Deploy with Ansible & PM2') {
+        stage('Deploy with Ansible') {
             steps {
                 script {
-                    withCredentials([string(credentialsId: 'ANSIBLE_VAULT_PASS', variable: 'VAULT_PASS')]) {
-                        sh '''
-                            echo "$VAULT_PASS" > .vault_pass
-                            ansible-playbook -i ansible/inventory.ini ansible/playbook.yml --vault-password-file .vault_pass
-                            rm -f .vault_pass
-                        '''
-                    }
+                    // Ejecuta el playbook de Ansible
+                    sh 'ansible-playbook -i ansible/inventory.ini ansible/playbook.yml'
                 }
             }
         }
@@ -31,10 +28,11 @@ pipeline {
     post {
         success {
             script {
-                def message = "✅ *Despliegue Exitoso (PM2 + Vault)*\n\n" +
+                def message = "✅ *Despliegue Exitoso*\n\n" +
                               "📦 *Proyecto:* ${env.JOB_NAME}\n" +
                               "🔢 *Build:* #${env.BUILD_NUMBER}\n" +
-                              "🌐 *Servidor:* http://192.168.1.30:3000"
+                              "🌐 *Servidor:* http://192.168.1.30:3000\n" +
+                              "👤 *Commit por:* ${env.CHANGE_AUTHOR ?: 'DevOps'}"
 
                 sh """
                     curl -s -X POST https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage \
@@ -48,7 +46,8 @@ pipeline {
             script {
                 def message = "❌ *Despliegue Fallido*\n\n" +
                               "📦 *Proyecto:* ${env.JOB_NAME}\n" +
-                              "🔢 *Build:* #${env.BUILD_NUMBER}"
+                              "🔢 *Build:* #${env.BUILD_NUMBER}\n" +
+                              "⚠️ Por favor revisar la consola de Jenkins."
 
                 sh """
                     curl -s -X POST https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage \

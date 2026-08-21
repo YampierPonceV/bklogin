@@ -1,18 +1,12 @@
 ---
-- name: Desplegar Backend Node.js en Servidor Ubuntu
+- name: Desplegar Backend Node.js con PM2
   hosts: webserver
   become: yes
   vars:
-    # Define aquí las variables de entorno de tu app
-    db_host: "192.168.1.141"
-    db_port: "5432"
-    db_name: "loginusers"
-    db_user: "bklogin"
-    db_password: "bk27login"
     app_port: "3000"
 
   tasks:
-    - name: Instalar Git, Curl y Node.js con npm
+    - name: Instalar Git, Curl, Node.js y npm
       apt:
         name:
           - git
@@ -22,7 +16,12 @@
         state: present
         update_cache: yes
 
-    - name: Crear directorio para la aplicación
+    - name: Instalar PM2 globalmente
+      npm:
+        name: pm2
+        global: yes
+
+    - name: Crear directorio de la aplicación
       file:
         path: /var/www/backend
         state: directory
@@ -30,7 +29,7 @@
         group: deployer
         mode: "0755"
 
-    - name: Clonar o actualizar el repositorio del backend
+    - name: Clonar o actualizar el repositorio
       git:
         repo: "https://github.com/YampierPonceV/bklogin.git"
         dest: /var/www/backend
@@ -38,37 +37,31 @@
         force: yes
       become: no
 
-    - name: Crear archivo .env de variables de entorno
+    - name: Crear archivo .env usando secretos de Ansible Vault
       copy:
         dest: /var/www/backend/.env
         content: |
           PORT={{ app_port }}
-          DB_HOST={{ db_host }}
-          DB_PORT={{ db_port }}
-          DB_NAME={{ db_name }}
-          DB_USER={{ db_user }}
-          DB_PASSWORD={{ db_password }}
+          DB_HOST={{ vault_db_host }}
+          DB_PORT={{ vault_db_port }}
+          DB_NAME={{ vault_db_name }}
+          DB_USER={{ vault_db_user }}
+          DB_PASSWORD={{ vault_db_password }}
         owner: deployer
         group: deployer
         mode: "0600"
 
-    - name: Instalar dependencias de Node.js (npm install)
+    - name: Instalar dependencias del proyecto (npm install)
       npm:
         path: /var/www/backend
       become: no
 
-    - name: Copiar archivo de servicio systemd
-      template:
-        src: templates/backend.service.j2
-        dest: /etc/systemd/system/backend.service
-        mode: "0644"
+    - name: Iniciar o recargar la aplicación con PM2
+      command: pm2 startOrReload ecosystem.config.js --env production
+      args:
+        chdir: /var/www/backend
+      become: no
 
-    - name: Recargar el demonio de systemd
-      systemd:
-        daemon_reload: yes
-
-    - name: Iniciar y habilitar el servicio backend
-      systemd:
-        name: backend
-        state: restarted
-        enabled: yes
+    - name: Guardar la lista de procesos de PM2
+      command: pm2 save
+      become: no
