@@ -9,7 +9,7 @@
     db_name: "loginusers"
     db_user: "bklogin"
     db_password: "bk27login"
-    port: "3000"
+    app_port: "3000"
 
   tasks:
     - name: Instalar Git, Curl y Node.js con npm
@@ -42,7 +42,7 @@
       copy:
         dest: /var/www/backend/.env
         content: |
-          PORT={{ port }}
+          PORT={{ app_port }}
           DB_HOST={{ db_host }}
           DB_PORT={{ db_port }}
           DB_NAME={{ db_name }}
