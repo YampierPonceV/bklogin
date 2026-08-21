@@ -3,8 +3,8 @@ pipeline {
 
     environment {
         // ID del bot de Telegram y Chat ID
-        TELEGRAM_BOT_TOKEN = '8954173902:AAHNJJkro3zPbK1F4nSaAufZG6gwSMZls4I'
-        TELEGRAM_CHAT_ID   = '6237311128'
+        TELEGRAM_BOT_TOKEN = credentials('telegram-bot-token')
+        TELEGRAM_CHAT_ID   = credentials('telegram-chat-id')
     }
 
     stages {
