@@ -86,7 +86,7 @@ const obtenerUsuario = async (req, res) => {
     );
 
     if (resultado.rows.length === 0) {
-      return res.status(404).json({ mensaje: "Usuario no encontrado." });
+      return res.status(404).json({ mensaje: "Usuario no fue encontrado." });
     }
 
     res.status(200).json({ usuario: resultado.rows[0] });
