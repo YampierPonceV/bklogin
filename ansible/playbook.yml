@@ -65,3 +65,52 @@
     - name: Guardar la lista de procesos de PM2
       command: pm2 save
       become: no
+    # ==========================================
+    # INSTALACIÓN Y CONFIGURACIÓN DE NODE EXPORTER
+    # ==========================================
+    - name: Crear usuario de sistema para Node Exporter
+      user:
+        name: node_exporter
+        shell: /bin/false
+        system: yes
+
+    - name: Descargar e instalar Node Exporter
+      unarchive:
+        src: https://github.com/prometheus/node_exporter/releases/download/v1.8.2/node_exporter-1.8.2.linux-amd64.tar.gz
+        dest: /tmp
+        remote_src: yes
+
+    - name: Copiar binario de Node Exporter a /usr/local/bin
+      copy:
+        src: /tmp/node_exporter-1.8.2.linux-amd64/node_exporter
+        dest: /usr/local/bin/node_exporter
+        owner: node_exporter
+        group: node_exporter
+        mode: "0755"
+        remote_src: yes
+
+    - name: Crear archivo de servicio systemd para Node Exporter
+      copy:
+        dest: /etc/systemd/system/node_exporter.service
+        content: |
+          [Unit]
+          Description=Node Exporter
+          Wants=network-online.target
+          After=network-online.target
+
+          [Service]
+          User=node_exporter
+          Group=node_exporter
+          Type=simple
+          ExecStart=/usr/local/bin/node_exporter
+
+          [Install]
+          WantedBy=multi-user.target
+        mode: "0644"
+
+    - name: Iniciar y habilitar Node Exporter
+      systemd:
+        name: node_exporter
+        state: started
+        enabled: yes
+        daemon_reload: yes
